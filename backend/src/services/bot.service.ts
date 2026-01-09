@@ -1,0 +1,182 @@
+import { Storage } from '../storage';
+import { UserCollection } from '../storage/types/user';
+import { BidService } from './bid.service';
+import { RoundService } from './round.service';
+
+const BOT_IDS = ['bot-tester-1', 'bot-tester-2', 'bot-tester-3'] as const;
+const BOT_BALANCE = 1_000_000_000_000;
+
+type BotId = typeof BOT_IDS[number];
+
+export class BotService {
+  private static isInitialized = false;
+  private static botActionInterval: NodeJS.Timeout | null = null;
+  private static readonly BOT_ACTION_INTERVAL_MS = 3000;
+
+  static isBot(userId: string): boolean {
+    return BOT_IDS.includes(userId as BotId);
+  }
+
+  static getBotIds(): readonly string[] {
+    return BOT_IDS;
+  }
+
+  static async initialize(): Promise<void> {
+    if (this.isInitialized) return;
+
+    console.log('Initializing bots...');
+
+    for (const botId of BOT_IDS) {
+      const existingBot = await Storage.instance.user.getById(botId);
+      
+      if (!existingBot) {
+        const now = Date.now();
+        const bot: UserCollection = {
+          id: botId,
+          username: `Bot ${botId.split('-').pop()}`,
+          passwordHash: '',
+          balance: BOT_BALANCE,
+          reservedBalance: 0,
+          stats: {
+            totalBidsPlaced: 0,
+            totalAuctionsParticipated: 0,
+            totalWins: 0,
+            totalSpent: 0,
+            totalRefunded: 0,
+          },
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        await Storage.instance.user.addOrUpdate(bot);
+        console.log(`Created bot: ${botId}`);
+      } else {
+        await Storage.instance.user.update(botId, {
+          balance: BOT_BALANCE,
+          reservedBalance: 0,
+        });
+        console.log(`Bot exists: ${botId}, balance reset`);
+      }
+    }
+
+    this.isInitialized = true;
+    console.log('Bots initialized');
+  }
+
+  static startBotActions(): void {
+    if (this.botActionInterval) {
+      console.log('Bot actions already running');
+      return;
+    }
+
+    console.log('Starting bot actions...');
+    
+    this.botActionInterval = setInterval(() => {
+      this.performBotActions();
+    }, this.BOT_ACTION_INTERVAL_MS);
+
+    console.log('Bot actions started');
+  }
+
+  static stopBotActions(): void {
+    if (this.botActionInterval) {
+      clearInterval(this.botActionInterval);
+      this.botActionInterval = null;
+      console.log('Bot actions stopped');
+    }
+  }
+
+  private static async performBotActions(): Promise<void> {
+    try {
+      const activeAuctions = await Storage.instance.auction.getActiveAuctions();
+
+      for (const auction of activeAuctions) {
+        const activeRound = await RoundService.getActiveRound(auction.id);
+        if (!activeRound) continue;
+
+        await this.processBotBidsForRound(auction.id, activeRound.id, auction.minBidAmount, auction.bidStep);
+      }
+    } catch (error) {
+      console.error('Error in bot actions:', error);
+    }
+  }
+
+  private static async processBotBidsForRound(
+    auctionId: string,
+    roundId: string,
+    minBidAmount: number,
+    bidStep: number
+  ): Promise<void> {
+    const round = await Storage.instance.round.getById(roundId);
+    if (!round) return;
+
+    const ranking = await BidService.getRoundRanking(roundId);
+    
+    const humanBids = ranking.filter(r => !this.isBot(r.bid.userId));
+    const botBids = ranking.filter(r => this.isBot(r.bid.userId));
+    
+    const maxHumanBid = humanBids.length > 0 ? humanBids[0].bid.amount : 0;
+
+    const randomBotIndex = Math.floor(Math.random() * BOT_IDS.length);
+    const selectedBotId = BOT_IDS[randomBotIndex];
+
+    const currentBotBid = await Storage.instance.bid.getByUserAndRound(selectedBotId, roundId);
+
+    if (!currentBotBid) {
+      const initialBid = minBidAmount + Math.floor(Math.random() * bidStep * 3);
+      
+      const safeBid = maxHumanBid > 0 ? Math.min(initialBid, maxHumanBid - 1) : initialBid;
+      
+      if (safeBid >= minBidAmount) {
+        await BidService.placeBid(selectedBotId, auctionId, roundId, safeBid);
+      }
+    } else {
+      const botRankEntry = ranking.find(r => r.bid.userId === selectedBotId);
+      
+      if (botRankEntry && !botRankEntry.isWinning) {
+        const winningBids = ranking.filter(r => r.isWinning);
+        const lowestWinningBid = winningBids.length > 0 
+          ? winningBids[winningBids.length - 1].bid.amount 
+          : minBidAmount;
+
+        const newBotBid = lowestWinningBid + bidStep + Math.floor(Math.random() * bidStep * 2);
+
+        if (maxHumanBid > 0 && newBotBid >= maxHumanBid) {
+          const safeRaise = maxHumanBid - 1;
+          if (safeRaise > currentBotBid.amount && safeRaise >= minBidAmount) {
+            await BidService.placeBid(selectedBotId, auctionId, roundId, safeRaise);
+          }
+        } else {
+          if (newBotBid > currentBotBid.amount) {
+            await BidService.placeBid(selectedBotId, auctionId, roundId, newBotBid);
+          }
+        }
+      } else if (botRankEntry && botRankEntry.isWinning) {
+        if (Math.random() < 0.1 && botBids.length > 1) {
+          const smallRaise = currentBotBid.amount + bidStep;
+          if (maxHumanBid === 0 || smallRaise < maxHumanBid) {
+            await BidService.placeBid(selectedBotId, auctionId, roundId, smallRaise);
+          }
+        }
+      }
+    }
+  }
+
+  static async getBotStats(): Promise<Array<{ id: string; username: string; balance: number; bidsPlaced: number }>> {
+    const stats = [];
+    
+    for (const botId of BOT_IDS) {
+      const bot = await Storage.instance.user.getById(botId);
+      if (bot) {
+        stats.push({
+          id: bot.id,
+          username: bot.username,
+          balance: bot.balance,
+          bidsPlaced: bot.stats.totalBidsPlaced,
+        });
+      }
+    }
+
+    return stats;
+  }
+}

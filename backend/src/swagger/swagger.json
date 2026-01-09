@@ -1,0 +1,680 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Auction API",
+    "description": "API для проведения аукционов в стиле Telegram Gift Auctions",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/api",
+      "description": "API Server"
+    }
+  ],
+  "tags": [
+    { "name": "Auth", "description": "Аутентификация" },
+    { "name": "Auction", "description": "Управление аукционами" },
+    { "name": "Bid", "description": "Ставки" },
+    { "name": "User", "description": "Профиль пользователя" },
+    { "name": "WebSocket", "description": "Real-time события" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "ApiResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "enum": ["ok", "failed"] },
+          "message": { "type": "string" },
+          "data": { "type": "object" }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "required": ["username", "password"],
+        "properties": {
+          "username": { "type": "string", "maxLength": 10 },
+          "password": { "type": "string", "minLength": 9 }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["username", "password"],
+        "properties": {
+          "username": { "type": "string" },
+          "password": { "type": "string" }
+        }
+      },
+      "CreateAuctionRequest": {
+        "type": "object",
+        "required": ["title", "rounds", "minBidAmount"],
+        "properties": {
+          "title": { "type": "string", "maxLength": 100 },
+          "description": { "type": "string", "maxLength": 1000 },
+          "imageUrl": { "type": "string", "format": "uri" },
+          "rounds": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["itemsCount", "durationSeconds"],
+              "properties": {
+                "itemsCount": { "type": "integer", "minimum": 1 },
+                "durationSeconds": { "type": "integer", "minimum": 10 }
+              }
+            }
+          },
+          "minBidAmount": { "type": "integer", "minimum": 1 },
+          "bidStep": { "type": "integer", "minimum": 1 },
+          "antiSniping": {
+            "type": "object",
+            "properties": {
+              "enabled": { "type": "boolean" },
+              "thresholdSeconds": { "type": "integer" },
+              "extensionSeconds": { "type": "integer" },
+              "maxExtensions": { "type": "integer" }
+            }
+          },
+          "scheduledStartAt": { "type": "integer", "description": "Unix timestamp" }
+        }
+      },
+      "PlaceBidRequest": {
+        "type": "object",
+        "required": ["auctionId", "amount"],
+        "properties": {
+          "auctionId": { "type": "string", "format": "uuid" },
+          "amount": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "DepositRequest": {
+        "type": "object",
+        "required": ["amount"],
+        "properties": {
+          "amount": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "AuctionResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "totalRounds": { "type": "integer" },
+          "totalItems": { "type": "integer" },
+          "currentRound": { "type": "integer" },
+          "status": { "type": "string", "enum": ["draft", "scheduled", "active", "completed", "cancelled"] },
+          "minBidAmount": { "type": "integer" },
+          "bidStep": { "type": "integer" },
+          "createdBy": { "type": "string" },
+          "createdAt": { "type": "integer" },
+          "currentRoundData": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "roundNumber": { "type": "integer" },
+              "status": { "type": "string" },
+              "timeRemaining": { "type": "integer" },
+              "bidsCount": { "type": "integer" },
+              "highestBid": { "type": "integer" }
+            }
+          },
+          "leaderboard": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rank": { "type": "integer" },
+                "username": { "type": "string" },
+                "amount": { "type": "integer" },
+                "isWinning": { "type": "boolean" }
+              }
+            }
+          }
+        }
+      },
+      "BidResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "auctionId": { "type": "string" },
+          "roundId": { "type": "string" },
+          "amount": { "type": "integer" },
+          "status": { "type": "string" },
+          "rank": { "type": "integer" },
+          "placedAt": { "type": "integer" }
+        }
+      },
+      "UserProfile": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "username": { "type": "string" },
+          "balance": { "type": "integer" },
+          "reservedBalance": { "type": "integer" },
+          "availableBalance": { "type": "integer" },
+          "stats": {
+            "type": "object",
+            "properties": {
+              "totalBidsPlaced": { "type": "integer" },
+              "totalAuctionsParticipated": { "type": "integer" },
+              "totalWins": { "type": "integer" },
+              "totalSpent": { "type": "integer" },
+              "totalRefunded": { "type": "integer" }
+            }
+          }
+        }
+      },
+      "GiftResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "auctionId": { "type": "string" },
+          "giftNumber": { "type": "integer" },
+          "status": { "type": "string" },
+          "winningAmount": { "type": "integer" },
+          "awardedAt": { "type": "integer" }
+        }
+      },
+      "TransactionResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "type": "string" },
+          "direction": { "type": "string", "enum": ["credit", "debit"] },
+          "amount": { "type": "integer" },
+          "balanceBefore": { "type": "integer" },
+          "balanceAfter": { "type": "integer" },
+          "status": { "type": "string" },
+          "description": { "type": "string" },
+          "createdAt": { "type": "integer" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Регистрация",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RegisterRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Успешная регистрация",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string" },
+                    "token": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Вход",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Успешный вход",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string" },
+                    "token": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auction": {
+      "post": {
+        "tags": ["Auction"],
+        "summary": "Создать аукцион",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateAuctionRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Аукцион создан",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    { "properties": { "data": { "$ref": "#/components/schemas/AuctionResponse" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["Auction"],
+        "summary": "Список аукционов",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["draft", "scheduled", "active", "completed", "cancelled"] } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50 } },
+          { "name": "skip", "in": "query", "schema": { "type": "integer", "default": 0 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Список аукционов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    { "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/AuctionResponse" } } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auction/{id}": {
+      "get": {
+        "tags": ["Auction"],
+        "summary": "Получить аукцион",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Аукцион",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    { "properties": { "data": { "$ref": "#/components/schemas/AuctionResponse" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auction/{id}/start": {
+      "post": {
+        "tags": ["Auction"],
+        "summary": "Запустить аукцион",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Аукцион запущен" }
+        }
+      }
+    },
+    "/auction/{id}/leaderboard": {
+      "get": {
+        "tags": ["Auction"],
+        "summary": "Лидерборд аукциона",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Лидерборд",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "roundId": { "type": "string" },
+                        "roundNumber": { "type": "integer" },
+                        "itemsCount": { "type": "integer" },
+                        "timeRemaining": { "type": "integer" },
+                        "leaderboard": { "type": "array" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auction/{id}/rounds": {
+      "get": {
+        "tags": ["Auction"],
+        "summary": "Раунды аукциона",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Список раундов" }
+        }
+      }
+    },
+    "/auction/{id}/gifts": {
+      "get": {
+        "tags": ["Auction"],
+        "summary": "Подарки аукциона",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Список подарков" }
+        }
+      }
+    },
+    "/bid": {
+      "post": {
+        "tags": ["Bid"],
+        "summary": "Сделать/повысить ставку",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PlaceBidRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ставка сделана",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    { "properties": { "data": { "$ref": "#/components/schemas/BidResponse" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bid/my": {
+      "get": {
+        "tags": ["Bid"],
+        "summary": "Мои ставки",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Список ставок",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    { "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/BidResponse" } } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bid/my/active": {
+      "get": {
+        "tags": ["Bid"],
+        "summary": "Мои активные ставки",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Активные ставки" }
+        }
+      }
+    },
+    "/bid/my/auction/{auctionId}": {
+      "get": {
+        "tags": ["Bid"],
+        "summary": "Моя ставка в аукционе",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "auctionId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Ставка или null" }
+        }
+      }
+    },
+    "/bid/round/{roundId}/ranking": {
+      "get": {
+        "tags": ["Bid"],
+        "summary": "Рейтинг раунда",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "roundId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Рейтинг ставок" }
+        }
+      }
+    },
+    "/user/me": {
+      "get": {
+        "tags": ["User"],
+        "summary": "Мой профиль",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Профиль",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    { "properties": { "data": { "$ref": "#/components/schemas/UserProfile" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/balance": {
+      "get": {
+        "tags": ["User"],
+        "summary": "Мой баланс",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Баланс" }
+        }
+      }
+    },
+    "/user/gifts": {
+      "get": {
+        "tags": ["User"],
+        "summary": "Мои выигранные подарки",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Подарки",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    { "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/GiftResponse" } } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/transactions": {
+      "get": {
+        "tags": ["User"],
+        "summary": "История транзакций",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Транзакции",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    { "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/TransactionResponse" } } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/auctions": {
+      "get": {
+        "tags": ["User"],
+        "summary": "Мои созданные аукционы",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Аукционы" }
+        }
+      }
+    },
+    "/user/deposit": {
+      "post": {
+        "tags": ["User"],
+        "summary": "Пополнить баланс (тест)",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/DepositRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Баланс пополнен" }
+        }
+      }
+    },
+    "/user/bots": {
+      "get": {
+        "tags": ["User"],
+        "summary": "Статистика ботов",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Статистика" }
+        }
+      }
+    }
+  },
+  "x-websocket-events": {
+    "connection": {
+      "description": "Подключение к WebSocket",
+      "auth": "Передать token в socket.handshake.auth.token",
+      "example": "io('http://localhost:3000', { auth: { token: 'JWT_TOKEN' } })"
+    },
+    "client-events": {
+      "join:auction": {
+        "description": "Подписаться на аукцион",
+        "payload": { "auctionId": "string (UUID)" }
+      },
+      "leave:auction": {
+        "description": "Отписаться от аукциона",
+        "payload": { "auctionId": "string (UUID)" }
+      }
+    },
+    "server-events": {
+      "auction:state": {
+        "description": "Начальное состояние при подключении",
+        "payload": {
+          "status": "string",
+          "currentRound": "number",
+          "totalRounds": "number",
+          "round": { "id": "string", "roundNumber": "number", "itemsCount": "number", "timeRemaining": "number" },
+          "leaderboard": [{ "rank": "number", "username": "string", "amount": "number", "isWinning": "boolean", "isCurrentUser": "boolean" }]
+        }
+      },
+      "timer:update": {
+        "description": "Обновление таймера (каждую секунду)",
+        "payload": {
+          "roundId": "string",
+          "roundNumber": "number",
+          "timeRemaining": "number (ms)",
+          "itemsCount": "number"
+        }
+      },
+      "bid:update": {
+        "description": "Новая ставка",
+        "payload": {
+          "roundNumber": "number",
+          "leaderboard": [{ "rank": "number", "username": "string", "amount": "number", "isWinning": "boolean", "timestamp": "number" }]
+        }
+      },
+      "round:end": {
+        "description": "Раунд завершён",
+        "payload": {
+          "roundNumber": "number",
+          "winners": [{ "username": "string", "amount": "number", "giftNumber": "number" }],
+          "nextRound": "number | null"
+        }
+      },
+      "auction:end": {
+        "description": "Аукцион завершён",
+        "payload": {
+          "finalLeaderboard": [{ "rank": "number", "username": "string", "amount": "number", "won": "boolean" }]
+        }
+      }
+    }
+  }
+}
+

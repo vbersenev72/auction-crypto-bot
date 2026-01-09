@@ -1,0 +1,6 @@
+node_modules
+.env
+client/.env
+backend/.env
+client/dist
+

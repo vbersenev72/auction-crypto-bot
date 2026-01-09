@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: auction-mongodb
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - auction-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: auction-backend
+    restart: unless-stopped
+    expose:
+      - "9000"
+    environment:
+      - DATABASE_URL=mongodb://mongodb:27017/
+      - DATABASE_NAME=auction
+      - PORT=9000
+      - SECRET=fj0wkf092jdf0-2na0d0-fvbo-29fmwpKOL^^dklw
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - auction-network
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=/api
+        - VITE_SOCKET_URL=
+    container_name: auction-client
+    restart: unless-stopped
+    ports:
+      - "3030:80"
+    depends_on:
+      - backend
+    networks:
+      - auction-network
+
+networks:
+  auction-network:
+    driver: bridge
+
+volumes:
+  mongo_data:
+

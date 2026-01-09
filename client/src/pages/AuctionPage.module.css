@@ -1,0 +1,423 @@
+.container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0d1f0d 0%, #1a3a1a 50%, #0d2818 100%);
+}
+
+.loading, .error {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  color: #6b7280;
+  font-size: 1.2rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px;
+  border-bottom: 1px solid #2d5a2d;
+  background: rgba(10, 20, 10, 0.9);
+}
+
+.backBtn {
+  padding: 10px 16px;
+  background: rgba(45, 90, 45, 0.3);
+  border: 1px solid #2d5a2d;
+  color: #86efac;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.headerInfo {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.headerInfo h1 {
+  color: #e2e8f0;
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.status {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status.pending { background: #fbbf24; color: #0d1f0d; }
+.status.draft { background: #fbbf24; color: #0d1f0d; }
+.status.active { background: #22c55e; color: #0d1f0d; }
+.status.completed { background: #6b7280; color: white; }
+
+.balance {
+  color: #fbbf24;
+  font-weight: 600;
+  padding: 8px 16px;
+  background: rgba(251, 191, 36, 0.1);
+  border-radius: 20px;
+}
+
+.main {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.timerSection {
+  text-align: center;
+  padding: 30px;
+  background: rgba(20, 40, 20, 0.8);
+  border: 1px solid #2d5a2d;
+  border-radius: 16px;
+  margin-bottom: 20px;
+}
+
+.roundInfo {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  color: #86efac;
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+}
+
+.timer {
+  font-size: 4rem;
+  font-weight: 700;
+  color: #4ade80;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.live {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 4px 12px;
+  background: rgba(220, 38, 38, 0.2);
+  border-radius: 12px;
+  font-size: 0.75rem;
+  color: #f87171;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.pendingSection {
+  text-align: center;
+  padding: 40px;
+  background: rgba(20, 40, 20, 0.8);
+  border: 1px solid #2d5a2d;
+  border-radius: 16px;
+  margin-bottom: 20px;
+}
+
+.pendingSection p {
+  color: #6b7280;
+  margin-bottom: 20px;
+}
+
+.startBtn {
+  padding: 16px 32px;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.startBtn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+}
+
+.leaderboard {
+  background: rgba(20, 40, 20, 0.8);
+  border: 1px solid #2d5a2d;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.leaderboard h2 {
+  color: #4ade80;
+  margin: 0 0 16px 0;
+  font-size: 1.1rem;
+}
+
+.noData {
+  text-align: center;
+  color: #6b7280;
+  padding: 20px;
+}
+
+.leaderList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.leaderItem {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: rgba(10, 20, 10, 0.5);
+  border-radius: 10px;
+  gap: 12px;
+  transition: all 0.2s;
+}
+
+.leaderItem.winning {
+  background: rgba(74, 222, 128, 0.15);
+  border: 1px solid #4ade80;
+}
+
+.leaderItem.isMe {
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid #fbbf24;
+}
+
+.rank {
+  width: 40px;
+  font-size: 1.2rem;
+  color: #86efac;
+  flex-shrink: 0;
+}
+
+.username {
+  flex: 1;
+  color: #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.youBadge {
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  background: #fbbf24;
+  color: #0d1f0d;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.bidInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.amount {
+  color: #fbbf24;
+  font-weight: 600;
+}
+
+.time {
+  color: #6b7280;
+  font-size: 0.75rem;
+}
+
+.myBid {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid #fbbf24;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  color: #fbbf24;
+}
+
+.myBidAmount {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.myBidRank {
+  padding: 4px 10px;
+  background: rgba(251, 191, 36, 0.2);
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.bidSection {
+  background: rgba(20, 40, 20, 0.8);
+  border: 1px solid #2d5a2d;
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.bidInput {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.bidInput input {
+  flex: 1;
+  padding: 14px;
+  background: rgba(10, 20, 10, 0.8);
+  border: 1px solid #2d5a2d;
+  border-radius: 10px;
+  color: #e2e8f0;
+  font-size: 1.25rem;
+  text-align: center;
+}
+
+.bidInput input:focus {
+  outline: none;
+  border-color: #4ade80;
+}
+
+.bidBtn {
+  width: 50px;
+  background: rgba(45, 90, 45, 0.5);
+  border: 1px solid #2d5a2d;
+  color: #86efac;
+  border-radius: 10px;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.bidBtn:hover {
+  background: rgba(45, 90, 45, 0.8);
+}
+
+.placeBidBtn {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.placeBidBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+}
+
+.placeBidBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.bidError {
+  margin-top: 12px;
+  padding: 10px;
+  background: rgba(220, 38, 38, 0.2);
+  border-radius: 8px;
+  color: #f87171;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.completed {
+  text-align: center;
+  padding: 40px;
+  color: #4ade80;
+}
+
+/* Modals */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modalContent {
+  background: #0d1f0d;
+  border: 1px solid #4ade80;
+  border-radius: 16px;
+  padding: 32px;
+  width: 90%;
+  max-width: 400px;
+  text-align: center;
+}
+
+.modalContent h2 {
+  color: #4ade80;
+  margin: 0 0 24px 0;
+}
+
+.winners {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.winner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: rgba(74, 222, 128, 0.1);
+  border-radius: 8px;
+  color: #e2e8f0;
+}
+
+.winnerName {
+  color: #fbbf24;
+  font-weight: 600;
+}
+
+.modalContent p {
+  color: #6b7280;
+  margin-bottom: 24px;
+}
+
+.modalBtn {
+  padding: 14px 32px;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.finalLeaderboard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.finalEntry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: rgba(20, 40, 20, 0.8);
+  border-radius: 8px;
+  color: #e2e8f0;
+}
+
+.wonBadge {
+  font-size: 1.2rem;
+}
+
