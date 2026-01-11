@@ -9,11 +9,7 @@ class AuctionController {
   
   @defaultUnexpectedError("Cannot create auction")
   async create(req: CustomRequest): Promise<ApiResponse<AuctionResponse>> {
-    const userId = req.userId;
-    if (!userId) {
-      return { status: 'failed', message: 'Unauthorized' };
-    }
-
+    const userId = req.userId!;
     const { title, description, imageUrl, rounds, minBidAmount, bidStep, antiSniping, scheduledStartAt } = req.body as CreateAuctionRequest;
 
     const roundsConfig = rounds.map((r, index) => ({
@@ -46,11 +42,7 @@ class AuctionController {
 
   @defaultUnexpectedError("Cannot start auction")
   async start(req: CustomRequest): Promise<ApiResponse<AuctionResponse>> {
-    const userId = req.userId;
-    if (!userId) {
-      return { status: 'failed', message: 'Unauthorized' };
-    }
-
+    const userId = req.userId!;
     const auctionId = (req.params as { id: string }).id;
     
     const auction = await AuctionService.getById(auctionId);

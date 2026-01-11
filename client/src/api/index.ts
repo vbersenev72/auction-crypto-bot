@@ -1,3 +1,5 @@
+import { toast } from 'react-toastify';
+
 const API_URL = import.meta.env.VITE_API_URL;
 
 class ApiService {
@@ -36,7 +38,9 @@ class ApiService {
     }
 
     if (data.status === 'failed') {
-      throw new Error(data.message || 'Request failed');
+      const errorMessage = data.message || 'Request failed';
+      toast.error(errorMessage);
+      throw new Error(errorMessage);
     }
 
     return data;

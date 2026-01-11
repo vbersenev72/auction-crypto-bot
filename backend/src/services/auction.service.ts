@@ -61,7 +61,7 @@ export class AuctionService {
     const auctionId = v4();
 
     const antiSniping: AntiSnipingConfig = {
-      enabled: input.antiSniping?.enabled ?? true,
+      enabled: input.antiSniping?.enabled ?? false,
       thresholdSeconds: input.antiSniping?.thresholdSeconds ?? 30,
       extensionSeconds: input.antiSniping?.extensionSeconds ?? 30,
       maxExtensions: input.antiSniping?.maxExtensions ?? 5,
@@ -220,9 +220,58 @@ export class AuctionService {
           isWinning: entry.isWinning,
         }));
       }
+    } else if (auction.status === 'completed') {
+      result.leaderboard = await this.getCompletedAuctionLeaderboard(auctionId);
     }
 
     return result;
+  }
+
+  private static async getCompletedAuctionLeaderboard(auctionId: string): Promise<Array<{
+    rank: number;
+    username: string;
+    amount: number;
+    isWinning: boolean;
+  }>> {
+    const gifts = await Storage.instance.gift.getByAuction(auctionId);
+    const winnerIds = new Set(gifts.filter(g => g.winnerId).map(g => g.winnerId!));
+    
+    const allBids = await Storage.instance.bid.getByAuction(auctionId);
+    
+    const userBestBids = new Map<string, { amount: number; timestamp: number }>();
+    for (const bid of allBids) {
+      const existing = userBestBids.get(bid.userId);
+      if (!existing || bid.amount > existing.amount) {
+        userBestBids.set(bid.userId, { amount: bid.amount, timestamp: bid.lastUpdatedAt });
+      }
+    }
+    
+    const sortedUsers = Array.from(userBestBids.entries())
+      .sort((a, b) => {
+        if (b[1].amount !== a[1].amount) return b[1].amount - a[1].amount;
+        return a[1].timestamp - b[1].timestamp;
+      });
+    
+    const leaderboard: Array<{
+      rank: number;
+      username: string;
+      amount: number;
+      isWinning: boolean;
+    }> = [];
+    
+    for (let i = 0; i < sortedUsers.length; i++) {
+      const [userId, data] = sortedUsers[i];
+      const user = await Storage.instance.user.getById(userId);
+      
+      leaderboard.push({
+        rank: i + 1,
+        username: user?.username || 'Unknown',
+        amount: data.amount,
+        isWinning: winnerIds.has(userId),
+      });
+    }
+    
+    return leaderboard;
   }
 
   static async getList(options?: {

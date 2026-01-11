@@ -8,20 +8,8 @@ class BidController {
   
   @defaultUnexpectedError("Cannot place bid")
   async placeBid(req: CustomRequest): Promise<ApiResponse<BidResponse>> {
-    const userId = req.userId;
-    if (!userId) {
-      return { status: 'failed', message: 'Unauthorized' };
-    }
-
+    const userId = req.userId!;
     const { auctionId, amount } = req.body as PlaceBidRequest;
-
-    if (!auctionId) {
-      return { status: 'failed', message: 'Auction ID is required' };
-    }
-
-    if (!amount || amount <= 0) {
-      return { status: 'failed', message: 'Amount must be positive' };
-    }
 
     const activeRound = await RoundService.getActiveRound(auctionId);
     if (!activeRound) {
@@ -42,11 +30,7 @@ class BidController {
 
   @defaultUnexpectedError("Cannot get user bids")
   async getMyBids(req: CustomRequest): Promise<ApiResponse<BidResponse[]>> {
-    const userId = req.userId;
-    if (!userId) {
-      return { status: 'failed', message: 'Unauthorized' };
-    }
-
+    const userId = req.userId!;
     const bids = await BidService.getUserBids(userId);
 
     return {
@@ -57,11 +41,7 @@ class BidController {
 
   @defaultUnexpectedError("Cannot get active bids")
   async getMyActiveBids(req: CustomRequest): Promise<ApiResponse<BidResponse[]>> {
-    const userId = req.userId;
-    if (!userId) {
-      return { status: 'failed', message: 'Unauthorized' };
-    }
-
+    const userId = req.userId!;
     const bids = await BidService.getUserActiveBids(userId);
 
     return {
@@ -72,11 +52,7 @@ class BidController {
 
   @defaultUnexpectedError("Cannot get bid in auction")
   async getMyBidInAuction(req: CustomRequest): Promise<ApiResponse<BidResponse | null>> {
-    const userId = req.userId;
-    if (!userId) {
-      return { status: 'failed', message: 'Unauthorized' };
-    }
-
+    const userId = req.userId!;
     const auctionId = (req.params as { auctionId: string }).auctionId;
 
     const activeRound = await RoundService.getActiveRound(auctionId);

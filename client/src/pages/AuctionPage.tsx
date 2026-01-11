@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api, Auction, LeaderboardEntry } from '../api';
 import { useSocket } from '../hooks/useSocket';
@@ -64,6 +64,22 @@ export function AuctionPage() {
     fetchAuction();
   }, [fetchAuction]);
 
+  // Отслеживаем смену раунда
+  const currentRoundNumber = timer?.roundNumber;
+  const prevRoundRef = useRef<number | null>(null);
+  
+  useEffect(() => {
+    if (currentRoundNumber !== undefined && prevRoundRef.current !== null && prevRoundRef.current !== currentRoundNumber) {
+      // Раунд сменился — сбрасываем ставку и обновляем данные
+      setMyBid(null);
+      if (auction) {
+        setBidAmount(auction.minBidAmount);
+      }
+      fetchAuction();
+    }
+    prevRoundRef.current = currentRoundNumber ?? null;
+  }, [currentRoundNumber, auction?.minBidAmount, fetchAuction]);
+
   // Fetch my bid
   useEffect(() => {
     if (!id) return;
@@ -71,9 +87,16 @@ export function AuctionPage() {
       if (res.data) {
         setMyBid({ amount: res.data.amount, rank: res.data.rank });
         setBidAmount(res.data.amount + (auction?.bidStep || 5));
+      } else {
+        setMyBid(null);
+        if (auction) {
+          setBidAmount(auction.minBidAmount);
+        }
       }
-    }).catch(() => {});
-  }, [id, auction?.bidStep, leaderboard]);
+    }).catch(() => {
+      setMyBid(null);
+    });
+  }, [id, auction?.bidStep, timer?.roundId]);
 
   const handlePlaceBid = async () => {
     if (!id || placing) return;
@@ -158,20 +181,33 @@ export function AuctionPage() {
 
         {/* Leaderboard */}
         <div className={styles.leaderboard}>
-          <h2>Лидерборд</h2>
+          <h2>{auction.status === 'completed' ? '🏆 Итоговые результаты' : 'Лидерборд'}</h2>
           {displayLeaderboard.length === 0 ? (
             <div className={styles.noData}>Пока нет ставок</div>
           ) : (
             <div className={styles.leaderList}>
-              {displayLeaderboard.slice(0, 10).map((entry, index) => {
+              {displayLeaderboard.slice(0, 15).map((entry, index) => {
                 const isMe = entry.username === user?.username || entry.isCurrentUser;
+                const isTopThree = entry.rank <= 3;
+                const rankEmoji = entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : null;
+                
                 return (
                   <div
                     key={`${entry.username}-${index}`}
-                    className={`${styles.leaderItem} ${entry.isWinning ? styles.winning : ''} ${isMe ? styles.isMe : ''}`}
+                    className={`
+                      ${styles.leaderItem} 
+                      ${entry.isWinning ? styles.winning : styles.losing} 
+                      ${isMe ? styles.isMe : ''}
+                      ${isTopThree ? styles.topThree : ''}
+                      ${auction.status === 'completed' ? styles.completed : ''}
+                    `}
                   >
-                    <div className={styles.rank}>
-                      {entry.rank <= 3 ? ['🥇', '🥈', '🥉'][entry.rank - 1] : `#${entry.rank}`}
+                    <div className={`${styles.rank} ${isTopThree ? styles.rankTop : ''}`}>
+                      {rankEmoji ? (
+                        <span className={styles.rankEmoji}>{rankEmoji}</span>
+                      ) : (
+                        <span className={styles.rankNumber}>#{entry.rank}</span>
+                      )}
                     </div>
                     <div className={styles.username}>
                       {entry.username}
@@ -179,10 +215,19 @@ export function AuctionPage() {
                     </div>
                     <div className={styles.bidInfo}>
                       <span className={styles.amount}>{entry.amount} ⭐</span>
-                      {entry.timestamp && (
+                      {entry.timestamp && auction.status !== 'completed' && (
                         <span className={styles.time}>{formatTimeAgo(entry.timestamp)}</span>
                       )}
                     </div>
+                    {auction.status === 'completed' && (
+                      <div className={styles.resultBadge}>
+                        {entry.isWinning ? (
+                          <span className={styles.winnerBadge}>🎁 ПОБЕДИТЕЛЬ</span>
+                        ) : (
+                          <span className={styles.loserBadge}>Не выиграл</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -233,10 +278,25 @@ export function AuctionPage() {
           </div>
         )}
 
-        {/* Auction completed */}
+        {/* Auction completed summary */}
         {auction.status === 'completed' && (
-          <div className={styles.completed}>
-            <h2>🎉 Аукцион завершён</h2>
+          <div className={styles.completedSummary}>
+            <div className={styles.completedIcon}>🎉</div>
+            <h2>Аукцион завершён</h2>
+            <div className={styles.summaryStats}>
+              <div className={styles.statItem}>
+                <span className={styles.statValue}>{auction.totalRounds}</span>
+                <span className={styles.statLabel}>раундов</span>
+              </div>
+              <div className={styles.statItem}>
+                <span className={styles.statValue}>{auction.totalItems}</span>
+                <span className={styles.statLabel}>подарков</span>
+              </div>
+              <div className={styles.statItem}>
+                <span className={styles.statValue}>{displayLeaderboard.filter(e => e.isWinning).length}</span>
+                <span className={styles.statLabel}>победителей</span>
+              </div>
+            </div>
           </div>
         )}
 
@@ -259,7 +319,7 @@ export function AuctionPage() {
               ) : (
                 <p>Это был последний раунд!</p>
               )}
-              <button onClick={clearRoundEnd} className={styles.modalBtn}>
+              <button onClick={() => { clearRoundEnd(); fetchAuction(); }} className={styles.modalBtn}>
                 Продолжить
               </button>
             </div>

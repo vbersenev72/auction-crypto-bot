@@ -10,10 +10,7 @@ class UserController {
   
   @defaultUnexpectedError("Cannot get profile")
   async getProfile(req: CustomRequest): Promise<ApiResponse<UserProfileResponse>> {
-    const userId = req.userId;
-    if (!userId) {
-      return { status: 'failed', message: 'Unauthorized' };
-    }
+    const userId = req.userId!;
 
     const user = await Storage.instance.user.getById(userId);
     if (!user) {
@@ -37,10 +34,7 @@ class UserController {
 
   @defaultUnexpectedError("Cannot get balance")
   async getBalance(req: CustomRequest): Promise<ApiResponse> {
-    const userId = req.userId;
-    if (!userId) {
-      return { status: 'failed', message: 'Unauthorized' };
-    }
+    const userId = req.userId!;
 
     const balance = await BalanceService.getBalance(userId);
     if (!balance) {
@@ -55,11 +49,7 @@ class UserController {
 
   @defaultUnexpectedError("Cannot get gifts")
   async getMyGifts(req: CustomRequest): Promise<ApiResponse<GiftResponse[]>> {
-    const userId = req.userId;
-    if (!userId) {
-      return { status: 'failed', message: 'Unauthorized' };
-    }
-
+    const userId = req.userId!;
     const gifts = await AuctionService.getUserGifts(userId);
 
     return {
@@ -78,11 +68,7 @@ class UserController {
 
   @defaultUnexpectedError("Cannot get transaction history")
   async getTransactionHistory(req: CustomRequest): Promise<ApiResponse<TransactionResponse[]>> {
-    const userId = req.userId;
-    if (!userId) {
-      return { status: 'failed', message: 'Unauthorized' };
-    }
-
+    const userId = req.userId!;
     const limit = req.query.limit ? Number(req.query.limit) : 50;
     const transactions = await BalanceService.getHistory(userId, limit);
 
@@ -104,15 +90,8 @@ class UserController {
 
   @defaultUnexpectedError("Cannot deposit")
   async deposit(req: CustomRequest): Promise<ApiResponse> {
-    const userId = req.userId;
-    if (!userId) {
-      return { status: 'failed', message: 'Unauthorized' };
-    }
-
+    const userId = req.userId!;
     const { amount } = req.body as DepositRequest;
-    if (!amount || amount <= 0) {
-      return { status: 'failed', message: 'Amount must be positive' };
-    }
 
     const result = await BalanceService.deposit(userId, amount, 'Manual deposit');
 
@@ -131,11 +110,7 @@ class UserController {
 
   @defaultUnexpectedError("Cannot get my auctions")
   async getMyAuctions(req: CustomRequest): Promise<ApiResponse> {
-    const userId = req.userId;
-    if (!userId) {
-      return { status: 'failed', message: 'Unauthorized' };
-    }
-
+    const userId = req.userId!;
     const auctions = await AuctionService.getList({ createdBy: userId });
 
     return {
