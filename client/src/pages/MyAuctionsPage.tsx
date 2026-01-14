@@ -16,14 +16,22 @@ export function MyAuctionsPage() {
 
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
-      pending: '#fbbf24',
+      draft: '#fbbf24',
+      scheduled: '#3b82f6',
       active: '#22c55e',
       completed: '#6b7280',
       cancelled: '#dc2626',
     };
+    const labels: Record<string, string> = {
+      draft: 'Черновик',
+      scheduled: 'Запланирован',
+      active: 'Активен',
+      completed: 'Завершён',
+      cancelled: 'Отменён',
+    };
     return (
       <span className={styles.badge} style={{ backgroundColor: colors[status] || '#6b7280' }}>
-        {status}
+        {labels[status] || status}
       </span>
     );
   };
@@ -72,7 +80,7 @@ export function MyAuctionsPage() {
                 <span>🔄 {auction.totalRounds} раундов</span>
                 <span>💰 Мин. ставка: {auction.minBidAmount}</span>
               </div>
-              {auction.status === 'pending' && (
+              {(auction.status === 'draft' || auction.status === 'scheduled') && (
                 <button
                   onClick={(e) => handleStart(auction.id, e)}
                   className={styles.startBtn}

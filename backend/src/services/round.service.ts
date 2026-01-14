@@ -208,7 +208,11 @@ export class RoundService {
       nextRound ? nextRound.roundNumber : null
     );
 
-    if (!nextRound) {
+    if (nextRound) {
+      setTimeout(() => {
+        SocketService.emitNewRoundLeaderboard(auction.id, nextRound.id);
+      }, 500);
+    } else {
       SocketService.emitAuctionEnd(auction.id);
     }
 

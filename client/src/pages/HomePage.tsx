@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { CreateAuctionModal } from '../components/CreateAuctionModal';
@@ -8,6 +8,11 @@ export function HomePage() {
   const { user, logout, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [showCreateModal, setShowCreateModal] = useState(false);
+
+  // Обновляем профиль при возврате на главную
+  useEffect(() => {
+    refreshProfile();
+  }, []);
 
   const handleDeposit = async () => {
     const amount = prompt('Сколько Stars добавить?', '500');

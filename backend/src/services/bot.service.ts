@@ -3,7 +3,8 @@ import { UserCollection } from '../storage/types/user';
 import { BidService } from './bid.service';
 import { RoundService } from './round.service';
 
-const BOT_IDS = ['bot-tester-1', 'bot-tester-2', 'bot-tester-3'] as const;
+const BOT_IDS = ['bot-tester-1', 'bot-tester-2', 'bot-tester-3'];
+for (let i = 4; i < 31; i++) BOT_IDS.push(`bot-tester-${i}`) // 30 ботов
 const BOT_BALANCE = 1_000_000_000_000;
 
 type BotId = typeof BOT_IDS[number];

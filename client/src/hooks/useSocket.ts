@@ -87,6 +87,7 @@ export function useSocket(auctionId: string | null, autoConnect: boolean = false
 
     socket.on('round:end', (data: RoundEnd) => {
       setRoundEnd(data);
+      setLeaderboard([]);
     });
 
     socket.on('auction:end', (data: AuctionEnd) => {

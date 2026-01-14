@@ -80,9 +80,9 @@ export function AuctionPage() {
     prevRoundRef.current = currentRoundNumber ?? null;
   }, [currentRoundNumber, auction?.minBidAmount, fetchAuction]);
 
-  // Fetch my bid
+  // Fetch my bid при смене раунда
   useEffect(() => {
-    if (!id) return;
+    if (!id || !timer?.roundId) return;
     api.getMyBidInAuction(id).then((res) => {
       if (res.data) {
         setMyBid({ amount: res.data.amount, rank: res.data.rank });
@@ -97,6 +97,15 @@ export function AuctionPage() {
       setMyBid(null);
     });
   }, [id, auction?.bidStep, timer?.roundId]);
+
+  // Обновляем ранг из лидерборда при каждом обновлении
+  useEffect(() => {
+    if (!user || leaderboard.length === 0) return;
+    const myEntry = leaderboard.find(e => e.username === user.username || e.isCurrentUser);
+    if (myEntry) {
+      setMyBid(prev => prev ? { ...prev, rank: myEntry.rank } : { amount: myEntry.amount, rank: myEntry.rank });
+    }
+  }, [leaderboard, user]);
 
   const handlePlaceBid = async () => {
     if (!id || placing) return;
@@ -319,7 +328,7 @@ export function AuctionPage() {
               ) : (
                 <p>Это был последний раунд!</p>
               )}
-              <button onClick={() => { clearRoundEnd(); fetchAuction(); }} className={styles.modalBtn}>
+              <button onClick={() => { clearRoundEnd(); fetchAuction(); refreshProfile(); }} className={styles.modalBtn}>
                 Продолжить
               </button>
             </div>
@@ -341,7 +350,10 @@ export function AuctionPage() {
                   </div>
                 ))}
               </div>
-              <button onClick={() => { clearAuctionEnd(); navigate('/'); }} className={styles.modalBtn}>
+              <button onClick={() => { clearAuctionEnd(); fetchAuction(); refreshProfile(); }} className={styles.modalBtn}>
+                Посмотреть результаты
+              </button>
+              <button onClick={() => { clearAuctionEnd(); refreshProfile(); navigate('/'); }} className={styles.modalBtn}>
                 На главную
               </button>
             </div>

@@ -214,6 +214,26 @@ export class SocketService {
     this.io.to(`auction:${auctionId}`).emit('auction:end', event);
   }
 
+  static async emitNewRoundLeaderboard(auctionId: string, roundId: string): Promise<void> {
+    if (!this.io) return;
+
+    const ranking = await BidService.getRoundRanking(roundId);
+    const round = await Storage.instance.round.getById(roundId);
+
+    const leaderboard = ranking.map(entry => ({
+      rank: entry.rank,
+      username: entry.username,
+      amount: entry.bid.amount,
+      isWinning: entry.isWinning,
+      timestamp: entry.bid.lastUpdatedAt,
+    }));
+
+    this.io.to(`auction:${auctionId}`).emit('bid:update', {
+      roundNumber: round?.roundNumber,
+      leaderboard,
+    });
+  }
+
   static stop(): void {
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
