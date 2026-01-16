@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { api, LeaderboardEntry } from '../api';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:9000';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL;
 
 export interface TimerUpdate {
   roundId: string;
@@ -52,7 +52,7 @@ export function useSocket(auctionId: string | null, autoConnect: boolean = false
       reconnectionDelay: 1000,
     };
 
-    const socket = io(SOCKET_URL, socketOptions);
+    const socket = SOCKET_URL ? io(SOCKET_URL, socketOptions) : io(socketOptions);
 
     socket.on('connect', () => {
       setConnected(true);
