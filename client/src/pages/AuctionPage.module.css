@@ -536,3 +536,17 @@
   font-size: 1.2rem;
 }
 
+.resultsSection {
+  background: rgba(20, 40, 20, 0.8);
+  border: 1px solid #2d5a2d;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.resultsSection h2 {
+  color: #4ade80;
+  margin: 0 0 20px 0;
+  font-size: 1.3rem;
+  text-align: center;
+}

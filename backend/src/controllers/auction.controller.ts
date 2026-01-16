@@ -183,6 +183,21 @@ class AuctionController {
     };
   }
 
+  @defaultUnexpectedError("Cannot get auction results")
+  async getResults(req: CustomRequest): Promise<ApiResponse> {
+    const auctionId = (req.params as { id: string }).id;
+    
+    const results = await AuctionService.getResults(auctionId);
+    if (!results) {
+      return { status: 'failed', message: 'Auction not found' };
+    }
+
+    return {
+      status: 'ok',
+      data: results,
+    };
+  }
+
   static formatAuctionResponse(auction: Awaited<ReturnType<typeof AuctionService.getById>>): AuctionResponse {
     if (!auction) throw new Error('Auction is null');
     

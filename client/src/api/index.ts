@@ -123,6 +123,10 @@ class ApiService {
   async getMyBidInAuction(auctionId: string) {
     return this.request<{ status: string; data: Bid | null }>(`/bid/my/auction/${auctionId}`);
   }
+
+  async getAuctionResults(auctionId: string) {
+    return this.request<{ status: string; data: AuctionResults }>(`/auction/${auctionId}/results`);
+  }
 }
 
 export const api = new ApiService();
@@ -224,3 +228,49 @@ export interface CreateAuctionData {
   };
 }
 
+export interface RoundWinner {
+  rank: number;
+  username: string;
+  amount: number;
+  giftNumber: number;
+}
+
+export interface RoundResult {
+  roundNumber: number;
+  itemsCount: number;
+  status: string;
+  winners: RoundWinner[];
+  participants: Array<{
+    rank: number;
+    username: string;
+    amount: number;
+    isWinner: boolean;
+  }>;
+  totalBids: number;
+  highestBid: number;
+}
+
+export interface AuctionResults {
+  auction: {
+    id: string;
+    title: string;
+    status: string;
+    totalRounds: number;
+    totalItems: number;
+    startedAt?: number;
+    endedAt?: number;
+  };
+  rounds: RoundResult[];
+  overallWinners: Array<{
+    rank: number;
+    username: string;
+    giftsWon: number;
+    totalSpent: number;
+  }>;
+  stats: {
+    totalParticipants: number;
+    totalBids: number;
+    totalGiftsAwarded: number;
+    totalWinners: number;
+  };
+}

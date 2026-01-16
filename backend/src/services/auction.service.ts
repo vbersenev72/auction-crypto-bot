@@ -327,4 +327,155 @@ export class AuctionService {
   static async getUserGifts(userId: string): Promise<GiftCollection[]> {
     return await Storage.instance.gift.getByWinner(userId);
   }
+
+  static async getResults(auctionId: string): Promise<AuctionResults | null> {
+    const auction = await Storage.instance.auction.getById(auctionId);
+    if (!auction) return null;
+
+    const rounds = await Storage.instance.round.getByAuctionId(auctionId);
+    const gifts = await Storage.instance.gift.getByAuction(auctionId);
+    const allBids = await Storage.instance.bid.getByAuction(auctionId);
+
+    const roundResults: RoundResult[] = [];
+
+    for (const round of rounds) {
+      const roundGifts = gifts.filter(g => g.roundId === round.id);
+      const roundBids = allBids.filter(b => b.roundId === round.id);
+
+      const winners: RoundWinner[] = [];
+      for (const gift of roundGifts) {
+        if (gift.winnerId && gift.winningBidId) {
+          const user = await Storage.instance.user.getById(gift.winnerId);
+          winners.push({
+            rank: winners.length + 1,
+            username: user?.username || 'Unknown',
+            amount: gift.winningAmount || 0,
+            giftNumber: gift.giftNumber,
+          });
+        }
+      }
+
+      const participantMap = new Map<string, { amount: number; username: string }>();
+      for (const bid of roundBids) {
+        const existing = participantMap.get(bid.userId);
+        if (!existing || bid.amount > existing.amount) {
+          const user = await Storage.instance.user.getById(bid.userId);
+          participantMap.set(bid.userId, {
+            amount: bid.amount,
+            username: user?.username || 'Unknown',
+          });
+        }
+      }
+
+      const participants = Array.from(participantMap.values())
+        .sort((a, b) => b.amount - a.amount)
+        .map((p, i) => ({
+          rank: i + 1,
+          username: p.username,
+          amount: p.amount,
+          isWinner: winners.some(w => w.username === p.username),
+        }));
+
+      roundResults.push({
+        roundNumber: round.roundNumber,
+        itemsCount: round.itemsCount,
+        status: round.status,
+        winners: winners.sort((a, b) => b.amount - a.amount),
+        participants,
+        totalBids: round.totalBidsCount,
+        highestBid: round.highestBidAmount,
+      });
+    }
+
+    const allWinnerIds = new Set(gifts.filter(g => g.winnerId).map(g => g.winnerId!));
+    const userTotals = new Map<string, { totalSpent: number; giftsWon: number; username: string }>();
+
+    for (const gift of gifts) {
+      if (gift.winnerId && gift.winningAmount) {
+        const existing = userTotals.get(gift.winnerId) || { totalSpent: 0, giftsWon: 0, username: '' };
+        const user = await Storage.instance.user.getById(gift.winnerId);
+        userTotals.set(gift.winnerId, {
+          totalSpent: existing.totalSpent + gift.winningAmount,
+          giftsWon: existing.giftsWon + 1,
+          username: user?.username || 'Unknown',
+        });
+      }
+    }
+
+    const overallWinners = Array.from(userTotals.values())
+      .sort((a, b) => b.giftsWon - a.giftsWon || b.totalSpent - a.totalSpent)
+      .map((w, i) => ({
+        rank: i + 1,
+        username: w.username,
+        giftsWon: w.giftsWon,
+        totalSpent: w.totalSpent,
+      }));
+
+    return {
+      auction: {
+        id: auction.id,
+        title: auction.title,
+        status: auction.status,
+        totalRounds: auction.totalRounds,
+        totalItems: auction.totalItems,
+        startedAt: auction.startedAt,
+        endedAt: auction.endedAt,
+      },
+      rounds: roundResults,
+      overallWinners,
+      stats: {
+        totalParticipants: new Set(allBids.map(b => b.userId)).size,
+        totalBids: allBids.length,
+        totalGiftsAwarded: gifts.filter(g => g.status === 'awarded' || g.status === 'claimed').length,
+        totalWinners: allWinnerIds.size,
+      },
+    };
+  }
+}
+
+export interface RoundWinner {
+  rank: number;
+  username: string;
+  amount: number;
+  giftNumber: number;
+}
+
+export interface RoundResult {
+  roundNumber: number;
+  itemsCount: number;
+  status: string;
+  winners: RoundWinner[];
+  participants: Array<{
+    rank: number;
+    username: string;
+    amount: number;
+    isWinner: boolean;
+  }>;
+  totalBids: number;
+  highestBid: number;
+}
+
+export interface AuctionResults {
+  auction: {
+    id: string;
+    title: string;
+    status: string;
+    totalRounds: number;
+    totalItems: number;
+    startedAt?: number;
+    endedAt?: number;
+  };
+  rounds: RoundResult[];
+  overallWinners: Array<{
+    rank: number;
+    username: string;
+    giftsWon: number;
+    totalSpent: number;
+  }>;
+  stats: {
+    totalParticipants: number;
+    totalBids: number;
+    totalGiftsAwarded: number;
+    totalWinners: number;
+  };
 }

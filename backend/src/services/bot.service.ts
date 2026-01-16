@@ -102,6 +102,11 @@ export class BotService {
     }
   }
 
+  private static roundToStep(amount: number, minBidAmount: number, bidStep: number): number {
+    const stepsFromMin = Math.floor((amount - minBidAmount) / bidStep);
+    return minBidAmount + stepsFromMin * bidStep;
+  }
+
   private static async processBotBidsForRound(
     auctionId: string,
     roundId: string,
@@ -124,9 +129,13 @@ export class BotService {
     const currentBotBid = await Storage.instance.bid.getByUserAndRound(selectedBotId, roundId);
 
     if (!currentBotBid) {
-      const initialBid = minBidAmount + Math.floor(Math.random() * bidStep * 3);
+      const randomSteps = Math.floor(Math.random() * 3) + 1;
+      const initialBid = minBidAmount + randomSteps * bidStep;
       
-      const safeBid = maxHumanBid > 0 ? Math.min(initialBid, maxHumanBid - 1) : initialBid;
+      let safeBid = initialBid;
+      if (maxHumanBid > 0 && initialBid >= maxHumanBid) {
+        safeBid = this.roundToStep(maxHumanBid - 1, minBidAmount, bidStep);
+      }
       
       if (safeBid >= minBidAmount) {
         await BidService.placeBid(selectedBotId, auctionId, roundId, safeBid);
@@ -140,10 +149,11 @@ export class BotService {
           ? winningBids[winningBids.length - 1].bid.amount 
           : minBidAmount;
 
-        const newBotBid = lowestWinningBid + bidStep + Math.floor(Math.random() * bidStep * 2);
+        const randomSteps = Math.floor(Math.random() * 3) + 1;
+        const newBotBid = this.roundToStep(lowestWinningBid, minBidAmount, bidStep) + randomSteps * bidStep;
 
         if (maxHumanBid > 0 && newBotBid >= maxHumanBid) {
-          const safeRaise = maxHumanBid - 1;
+          const safeRaise = this.roundToStep(maxHumanBid - 1, minBidAmount, bidStep);
           if (safeRaise > currentBotBid.amount && safeRaise >= minBidAmount) {
             await BidService.placeBid(selectedBotId, auctionId, roundId, safeRaise);
           }

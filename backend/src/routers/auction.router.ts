@@ -23,5 +23,6 @@ auctionRouter.post("/:id/start", getMiddleware("start"));
 auctionRouter.get("/:id/leaderboard", getMiddleware("getLeaderboard"));
 auctionRouter.get("/:id/rounds", getMiddleware("getRounds"));
 auctionRouter.get("/:id/gifts", getMiddleware("getGifts"));
+auctionRouter.get("/:id/results", getMiddleware("getResults"));
 
 export { auctionRouter };
