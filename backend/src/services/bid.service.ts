@@ -47,9 +47,13 @@ export class BidService {
       return { success: false, error: `Minimum bid is ${auction.minBidAmount} Stars` };
     }
 
+    if ((amount - auction.minBidAmount) % auction.bidStep !== 0) {
+      return { success: false, error: `Bid must be a multiple of ${auction.bidStep} Stars from minimum bid` };
+    }
+
     const existingBid = await Storage.instance.bid.getByUserAndRound(userId, roundId);
 
-    const minRequiredBid = await this.getMinRequiredBid(roundId, round.itemsCount, auction.minBidAmount, existingBid?.id);
+    const minRequiredBid = await this.getMinRequiredBid(roundId, round.itemsCount, auction.minBidAmount, auction.bidStep, existingBid?.id);
     if (amount < minRequiredBid) {
       return { success: false, error: `Minimum bid to enter winning positions is ${minRequiredBid} Stars` };
     }
@@ -255,6 +259,7 @@ export class BidService {
     roundId: string,
     itemsCount: number,
     minBidAmount: number,
+    bidStep: number,
     excludeBidId?: string
   ): Promise<number> {
     const bids = await Storage.instance.bid.getByRoundRanked(roundId);
@@ -266,7 +271,8 @@ export class BidService {
     }
 
     const lowestWinningBid = otherBids[itemsCount - 1];
-    return lowestWinningBid.amount + 1;
+    const stepsNeeded = Math.floor((lowestWinningBid.amount - minBidAmount) / bidStep) + 1;
+    return minBidAmount + stepsNeeded * bidStep;
   }
 }
 

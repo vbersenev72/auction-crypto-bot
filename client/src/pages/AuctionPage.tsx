@@ -267,8 +267,14 @@ export function AuctionPage() {
               <input
                 type="number"
                 value={bidAmount}
-                onChange={(e) => setBidAmount(Number(e.target.value))}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  const steps = Math.round((val - auction.minBidAmount) / auction.bidStep);
+                  const rounded = auction.minBidAmount + Math.max(0, steps) * auction.bidStep;
+                  setBidAmount(rounded);
+                }}
                 min={auction.minBidAmount}
+                step={auction.bidStep}
               />
               <button
                 onClick={() => setBidAmount(bidAmount + auction.bidStep)}
