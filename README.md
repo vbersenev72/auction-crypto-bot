@@ -55,9 +55,9 @@ sudo docker compose up --build #linux
 
 ---
 
-Веб-сайт: https://snaplanding.ru
+Веб-сайт: https://snaplanding.ru (Если не работает - переходи по ip:port. Cloudflare в последнее время сбоит)
 
 Документация Swagger (Rest, socket.io): https://snaplanding.ru/docs
 
-Адрес сервера: 64.188.68.112:3030
+Адрес сервера: http://64.188.68.112:3030
 
