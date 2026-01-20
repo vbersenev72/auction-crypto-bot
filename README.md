@@ -56,6 +56,8 @@ sudo docker compose up --build #linux
 ---
 
 Веб-сайт: https://snaplanding.ru
+
 Документация Swagger (Rest, socket.io): https://snaplanding.ru/docs
+
 Адрес сервера: 64.188.68.112:3030
 
