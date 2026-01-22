@@ -1,6 +1,6 @@
 ### Демонстрация работы
 
-[Смотреть демо](auction%20demo.mp4)
+[Смотреть демо](https://github.com/user-attachments/assets/15ceb7a2-9e37-48ce-9bbc-5cb5d8a13d78)
 
 ---
 
