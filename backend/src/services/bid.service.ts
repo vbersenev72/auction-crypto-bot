@@ -63,6 +63,12 @@ export class BidService {
       return { success: false, error: `Minimum bid to enter winning positions is ${minRequiredBid} Stars` };
     }
 
+    // Проверяем что ставка не дублирует существующую призовую ставку
+    const duplicateCheck = await this.checkDuplicateBid(roundId, round.itemsCount, amount, existingBid?.id);
+    if (duplicateCheck.isDuplicate) {
+      return { success: false, error: `This bid amount is already taken. Place a higher bid: ${amount + auction.bidStep} Stars` };
+    }
+
     if (existingBid) {
       return await this.raiseBid(existingBid, amount, auction.bidStep);
     } else {
@@ -278,6 +284,24 @@ export class BidService {
     const lowestWinningBid = otherBids[itemsCount - 1];
     const stepsNeeded = Math.floor((lowestWinningBid.amount - minBidAmount) / bidStep) + 1;
     return minBidAmount + stepsNeeded * bidStep;
+  }
+
+  private static async checkDuplicateBid(
+    roundId: string,
+    itemsCount: number,
+    amount: number,
+    excludeBidId?: string
+  ): Promise<{ isDuplicate: boolean }> {
+    const bids = await Storage.instance.bid.getByRoundRanked(roundId);
+    const otherBids = excludeBidId ? bids.filter(b => b.id !== excludeBidId) : bids;
+    
+    // Проверяем только призовые позиции (или все если призов больше чем ставок)
+    const relevantBids = otherBids.slice(0, itemsCount);
+    
+    // Если ставка равна какой-либо призовой - это дубликат
+    const isDuplicate = relevantBids.some(b => b.amount === amount);
+    
+    return { isDuplicate };
   }
 }
 

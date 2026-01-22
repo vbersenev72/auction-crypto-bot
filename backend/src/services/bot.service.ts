@@ -120,7 +120,7 @@ export class BotService {
     const ranking = await BidService.getRoundRanking(roundId);
     
     const humanBids = ranking.filter(r => !this.isBot(r.bid.userId));
-    const botBids = ranking.filter(r => this.isBot(r.bid.userId));
+    const existingAmounts = new Set(ranking.map(r => r.bid.amount));
     
     const maxHumanBid = humanBids.length > 0 ? humanBids[0].bid.amount : 0;
 
@@ -133,16 +133,14 @@ export class BotService {
       const currentBotBid = await Storage.instance.bid.getByUserAndRound(selectedBotId, roundId);
 
       if (!currentBotBid) {
-        const randomSteps = Math.floor(Math.random() * 5) + 1;
-        const initialBid = minBidAmount + randomSteps * bidStep;
-        
-        let safeBid = initialBid;
-        if (maxHumanBid > 0 && initialBid >= maxHumanBid) {
-          safeBid = this.roundToStep(maxHumanBid - 1, minBidAmount, bidStep);
-        }
+        // Находим свободную сумму для новой ставки
+        let safeBid = this.findUniqueBidAmount(minBidAmount, bidStep, existingAmounts, maxHumanBid);
         
         if (safeBid >= minBidAmount) {
-          await BidService.placeBid(selectedBotId, auctionId, roundId, safeBid);
+          const result = await BidService.placeBid(selectedBotId, auctionId, roundId, safeBid);
+          if (result.success) {
+            existingAmounts.add(safeBid);
+          }
         }
       } else {
         const botRankEntry = ranking.find(r => r.bid.userId === selectedBotId);
@@ -153,30 +151,91 @@ export class BotService {
             ? winningBids[winningBids.length - 1].bid.amount 
             : minBidAmount;
 
-          const randomSteps = Math.floor(Math.random() * 4) + 1;
-          const newBotBid = this.roundToStep(lowestWinningBid, minBidAmount, bidStep) + randomSteps * bidStep;
+          // Находим свободную сумму выше самой низкой выигрывающей
+          let newBotBid = this.findUniqueBidAbove(lowestWinningBid, minBidAmount, bidStep, existingAmounts, maxHumanBid, currentBotBid.amount);
 
-          if (maxHumanBid > 0 && newBotBid >= maxHumanBid) {
-            const safeRaise = this.roundToStep(maxHumanBid - 1, minBidAmount, bidStep);
-            if (safeRaise > currentBotBid.amount && safeRaise >= minBidAmount) {
-              await BidService.placeBid(selectedBotId, auctionId, roundId, safeRaise);
-            }
-          } else {
-            if (newBotBid > currentBotBid.amount) {
-              await BidService.placeBid(selectedBotId, auctionId, roundId, newBotBid);
+          if (newBotBid > currentBotBid.amount) {
+            const result = await BidService.placeBid(selectedBotId, auctionId, roundId, newBotBid);
+            if (result.success) {
+              existingAmounts.delete(currentBotBid.amount);
+              existingAmounts.add(newBotBid);
             }
           }
         } else if (botRankEntry && botRankEntry.isWinning) {
-          // Иногда выигрывающий бот может немного поднять ставку
-          if (Math.random() < 0.15 && botBids.length > 1) {
-            const smallRaise = currentBotBid.amount + bidStep;
-            if (maxHumanBid === 0 || smallRaise < maxHumanBid) {
-              await BidService.placeBid(selectedBotId, auctionId, roundId, smallRaise);
+          if (Math.random() < 0.15) {
+            // Находим свободную сумму чуть выше текущей
+            let smallRaise = currentBotBid.amount + bidStep;
+            while (existingAmounts.has(smallRaise) && (maxHumanBid === 0 || smallRaise < maxHumanBid)) {
+              smallRaise += bidStep;
+            }
+            
+            if (!existingAmounts.has(smallRaise) && (maxHumanBid === 0 || smallRaise < maxHumanBid)) {
+              const result = await BidService.placeBid(selectedBotId, auctionId, roundId, smallRaise);
+              if (result.success) {
+                existingAmounts.delete(currentBotBid.amount);
+                existingAmounts.add(smallRaise);
+              }
             }
           }
         }
       }
     }
+  }
+
+  private static findUniqueBidAmount(
+    minBidAmount: number,
+    bidStep: number,
+    existingAmounts: Set<number>,
+    maxHumanBid: number
+  ): number {
+    const randomSteps = Math.floor(Math.random() * 5) + 1;
+    let bid = minBidAmount + randomSteps * bidStep;
+    
+    // Ищем свободную сумму
+    let attempts = 0;
+    while (existingAmounts.has(bid) && attempts < 20) {
+      bid += bidStep;
+      attempts++;
+    }
+    
+    // Проверяем лимит человеческих ставок
+    if (maxHumanBid > 0 && bid >= maxHumanBid) {
+      bid = this.roundToStep(maxHumanBid - 1, minBidAmount, bidStep);
+      while (existingAmounts.has(bid) && bid > minBidAmount) {
+        bid -= bidStep;
+      }
+    }
+    
+    return existingAmounts.has(bid) ? 0 : bid;
+  }
+
+  private static findUniqueBidAbove(
+    lowestWinningBid: number,
+    minBidAmount: number,
+    bidStep: number,
+    existingAmounts: Set<number>,
+    maxHumanBid: number,
+    currentAmount: number
+  ): number {
+    const randomSteps = Math.floor(Math.random() * 4) + 1;
+    let bid = this.roundToStep(lowestWinningBid, minBidAmount, bidStep) + randomSteps * bidStep;
+    
+    // Ищем свободную сумму
+    let attempts = 0;
+    while (existingAmounts.has(bid) && attempts < 20) {
+      bid += bidStep;
+      attempts++;
+    }
+    
+    // Проверяем лимит человеческих ставок
+    if (maxHumanBid > 0 && bid >= maxHumanBid) {
+      bid = this.roundToStep(maxHumanBid - 1, minBidAmount, bidStep);
+      while (existingAmounts.has(bid) && bid > currentAmount) {
+        bid -= bidStep;
+      }
+    }
+    
+    return existingAmounts.has(bid) ? currentAmount : bid;
   }
 
   static async getBotStats(): Promise<Array<{ id: string; username: string; balance: number; bidsPlaced: number }>> {
