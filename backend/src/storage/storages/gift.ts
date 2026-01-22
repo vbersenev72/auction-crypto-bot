@@ -134,5 +134,14 @@ export class GiftStorage {
   async getOneByFilter(filter: MongoDb.Filter<GiftCollection>): Promise<GiftCollection | undefined> {
     return await this.gifts.findOne({ ...filter }, { projection: { _id: 0 } }) ?? undefined;
   }
+
+  async hasUserWonInAuction(userId: string, auctionId: string): Promise<boolean> {
+    const count = await this.gifts.countDocuments({
+      auctionId,
+      winnerId: userId,
+      status: { $in: ['awarded', 'claimed'] }
+    });
+    return count > 0;
+  }
 }
 

@@ -340,7 +340,10 @@ export class AuctionService {
 
     for (const round of rounds) {
       const roundGifts = gifts.filter(g => g.roundId === round.id);
-      const roundBids = allBids.filter(b => b.roundId === round.id);
+      
+      const roundBids = allBids.filter(b => 
+        b.originalRoundId === round.id || b.carriedToRoundId === round.id
+      );
 
       const winners: RoundWinner[] = [];
       for (const gift of roundGifts) {
@@ -355,13 +358,23 @@ export class AuctionService {
         }
       }
 
+      const getAmountAtRoundEnd = (bid: typeof allBids[0], roundId: string): number => {
+        const carriedFromThisRound = bid.history.find(h => h.reason === 'carried' && h.fromRoundId === roundId);
+        if (carriedFromThisRound) {
+          return carriedFromThisRound.amount;
+        }
+        return bid.amount;
+      };
+
       const participantMap = new Map<string, { amount: number; username: string }>();
       for (const bid of roundBids) {
+        const amountInRound = getAmountAtRoundEnd(bid, round.id);
+
         const existing = participantMap.get(bid.userId);
-        if (!existing || bid.amount > existing.amount) {
+        if (!existing || amountInRound > existing.amount) {
           const user = await Storage.instance.user.getById(bid.userId);
           participantMap.set(bid.userId, {
-            amount: bid.amount,
+            amount: amountInRound,
             username: user?.username || 'Unknown',
           });
         }

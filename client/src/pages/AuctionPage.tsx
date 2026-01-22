@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { api, Auction, LeaderboardEntry } from '../api';
+import { api, Auction, LeaderboardEntry, Gift } from '../api';
 import { useSocket } from '../hooks/useSocket';
 import { useAuth } from '../context/AuthContext';
 import { AuctionResults } from '../components/AuctionResults';
@@ -34,6 +34,7 @@ export function AuctionPage() {
   const [bidAmount, setBidAmount] = useState(0);
   const [placing, setPlacing] = useState(false);
   const [myBid, setMyBid] = useState<{ amount: number; rank?: number } | null>(null);
+  const [myWonGift, setMyWonGift] = useState<Gift | null>(null);
 
   // Автоподключаемся к сокету только если аукцион активен
   const shouldConnect = auction?.status === 'active';
@@ -54,6 +55,11 @@ export function AuctionPage() {
       const res = await api.getAuction(id);
       setAuction(res.data);
       setBidAmount(res.data.minBidAmount);
+      
+      // Проверяем, выиграл ли пользователь в этом аукционе
+      const giftsRes = await api.getMyGifts();
+      const wonGift = giftsRes.data.find(g => g.auctionId === id && (g.status === 'awarded' || g.status === 'claimed'));
+      setMyWonGift(wonGift || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load auction');
     } finally {
@@ -245,8 +251,20 @@ export function AuctionPage() {
           </div>
         )}
 
+        {/* Winner Banner - показываем если пользователь уже выиграл */}
+        {myWonGift && auction.status === 'active' && (
+          <div className={styles.winnerBanner}>
+            <div className={styles.winnerIcon}>🏆</div>
+            <div className={styles.winnerText}>
+              <h3>Поздравляем! Вы выиграли!</h3>
+              <p>Вы получили подарок #{myWonGift.giftNumber} за {myWonGift.winningAmount} ⭐</p>
+              <span className={styles.winnerNote}>Победители не могут участвовать в следующих раундах этого аукциона</span>
+            </div>
+          </div>
+        )}
+
         {/* My current bid */}
-        {myBid && (
+        {myBid && !myWonGift && (
           <div className={styles.myBid}>
             <span>Ваша ставка:</span>
             <span className={styles.myBidAmount}>{myBid.amount} ⭐</span>
@@ -254,8 +272,8 @@ export function AuctionPage() {
           </div>
         )}
 
-        {/* Bid input */}
-        {auction.status === 'active' && (
+        {/* Bid input - скрываем если уже выиграл */}
+        {auction.status === 'active' && !myWonGift && (
           <div className={styles.bidSection}>
             <div className={styles.bidInput}>
               <button

@@ -305,6 +305,56 @@
   border-radius: 20px;
 }
 
+/* Winner Banner */
+.winnerBanner {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 24px;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(74, 222, 128, 0.1) 100%);
+  border: 2px solid #fbbf24;
+  border-radius: 16px;
+  margin-bottom: 20px;
+  animation: winnerGlow 2s ease-in-out infinite;
+}
+
+@keyframes winnerGlow {
+  0%, 100% { box-shadow: 0 0 20px rgba(251, 191, 36, 0.3); }
+  50% { box-shadow: 0 0 30px rgba(251, 191, 36, 0.5); }
+}
+
+.winnerIcon {
+  font-size: 3.5rem;
+  animation: trophyBounce 1s ease-in-out infinite;
+}
+
+@keyframes trophyBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.winnerText {
+  flex: 1;
+}
+
+.winnerText h3 {
+  color: #fbbf24;
+  margin: 0 0 8px 0;
+  font-size: 1.3rem;
+}
+
+.winnerText p {
+  color: #4ade80;
+  margin: 0 0 8px 0;
+  font-size: 1.1rem;
+}
+
+.winnerNote {
+  color: #86efac;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
 .myBid {
   display: flex;
   align-items: center;

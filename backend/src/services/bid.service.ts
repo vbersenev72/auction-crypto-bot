@@ -34,6 +34,11 @@ export class BidService {
       return { success: false, error: 'Auction is not active' };
     }
 
+    const hasWon = await Storage.instance.gift.hasUserWonInAuction(userId, auctionId);
+    if (hasWon) {
+      return { success: false, error: 'You have already won in this auction' };
+    }
+
     const round = await Storage.instance.round.getById(roundId);
     if (!round) {
       return { success: false, error: 'Round not found' };

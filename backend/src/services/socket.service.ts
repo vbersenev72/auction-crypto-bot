@@ -165,13 +165,20 @@ export class SocketService {
     const ranking = await BidService.getRoundRanking(roundId);
     const round = await Storage.instance.round.getById(roundId);
 
-    const leaderboard = ranking.map(entry => ({
-      rank: entry.rank,
-      username: entry.username,
-      amount: entry.bid.amount,
-      isWinning: entry.isWinning,
-      timestamp: entry.bid.lastUpdatedAt,
-    }));
+    const leaderboard = ranking.map(entry => {
+      // Берём время последнего raise или initial (не carried)
+      const lastBidAction = [...entry.bid.history]
+        .reverse()
+        .find(h => h.reason === 'initial' || h.reason === 'raise');
+      
+      return {
+        rank: entry.rank,
+        username: entry.username,
+        amount: entry.bid.amount,
+        isWinning: entry.isWinning,
+        timestamp: lastBidAction?.timestamp || entry.bid.placedAt,
+      };
+    });
 
     this.io.to(`auction:${auctionId}`).emit('bid:update', {
       roundNumber: round?.roundNumber,
@@ -220,13 +227,19 @@ export class SocketService {
     const ranking = await BidService.getRoundRanking(roundId);
     const round = await Storage.instance.round.getById(roundId);
 
-    const leaderboard = ranking.map(entry => ({
-      rank: entry.rank,
-      username: entry.username,
-      amount: entry.bid.amount,
-      isWinning: entry.isWinning,
-      timestamp: entry.bid.lastUpdatedAt,
-    }));
+    const leaderboard = ranking.map(entry => {
+      const lastBidAction = [...entry.bid.history]
+        .reverse()
+        .find(h => h.reason === 'initial' || h.reason === 'raise');
+      
+      return {
+        rank: entry.rank,
+        username: entry.username,
+        amount: entry.bid.amount,
+        isWinning: entry.isWinning,
+        timestamp: lastBidAction?.timestamp || entry.bid.placedAt,
+      };
+    });
 
     this.io.to(`auction:${auctionId}`).emit('bid:update', {
       roundNumber: round?.roundNumber,

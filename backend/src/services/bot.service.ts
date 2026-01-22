@@ -12,7 +12,8 @@ type BotId = typeof BOT_IDS[number];
 export class BotService {
   private static isInitialized = false;
   private static botActionInterval: NodeJS.Timeout | null = null;
-  private static readonly BOT_ACTION_INTERVAL_MS = 3000;
+  private static readonly BOT_ACTION_INTERVAL_MS = 1500;
+  private static readonly BOTS_PER_ACTION = 8;
 
   static isBot(userId: string): boolean {
     return BOT_IDS.includes(userId as BotId);
@@ -123,50 +124,55 @@ export class BotService {
     
     const maxHumanBid = humanBids.length > 0 ? humanBids[0].bid.amount : 0;
 
-    const randomBotIndex = Math.floor(Math.random() * BOT_IDS.length);
-    const selectedBotId = BOT_IDS[randomBotIndex];
+    const shuffledBots = [...BOT_IDS].sort(() => Math.random() - 0.5);
+    const selectedBots = shuffledBots.slice(0, this.BOTS_PER_ACTION);
 
-    const currentBotBid = await Storage.instance.bid.getByUserAndRound(selectedBotId, roundId);
+    for (const selectedBotId of selectedBots) {
+      if (Math.random() > 0.7) continue;
 
-    if (!currentBotBid) {
-      const randomSteps = Math.floor(Math.random() * 3) + 1;
-      const initialBid = minBidAmount + randomSteps * bidStep;
-      
-      let safeBid = initialBid;
-      if (maxHumanBid > 0 && initialBid >= maxHumanBid) {
-        safeBid = this.roundToStep(maxHumanBid - 1, minBidAmount, bidStep);
-      }
-      
-      if (safeBid >= minBidAmount) {
-        await BidService.placeBid(selectedBotId, auctionId, roundId, safeBid);
-      }
-    } else {
-      const botRankEntry = ranking.find(r => r.bid.userId === selectedBotId);
-      
-      if (botRankEntry && !botRankEntry.isWinning) {
-        const winningBids = ranking.filter(r => r.isWinning);
-        const lowestWinningBid = winningBids.length > 0 
-          ? winningBids[winningBids.length - 1].bid.amount 
-          : minBidAmount;
+      const currentBotBid = await Storage.instance.bid.getByUserAndRound(selectedBotId, roundId);
 
-        const randomSteps = Math.floor(Math.random() * 3) + 1;
-        const newBotBid = this.roundToStep(lowestWinningBid, minBidAmount, bidStep) + randomSteps * bidStep;
-
-        if (maxHumanBid > 0 && newBotBid >= maxHumanBid) {
-          const safeRaise = this.roundToStep(maxHumanBid - 1, minBidAmount, bidStep);
-          if (safeRaise > currentBotBid.amount && safeRaise >= minBidAmount) {
-            await BidService.placeBid(selectedBotId, auctionId, roundId, safeRaise);
-          }
-        } else {
-          if (newBotBid > currentBotBid.amount) {
-            await BidService.placeBid(selectedBotId, auctionId, roundId, newBotBid);
-          }
+      if (!currentBotBid) {
+        const randomSteps = Math.floor(Math.random() * 5) + 1;
+        const initialBid = minBidAmount + randomSteps * bidStep;
+        
+        let safeBid = initialBid;
+        if (maxHumanBid > 0 && initialBid >= maxHumanBid) {
+          safeBid = this.roundToStep(maxHumanBid - 1, minBidAmount, bidStep);
         }
-      } else if (botRankEntry && botRankEntry.isWinning) {
-        if (Math.random() < 0.1 && botBids.length > 1) {
-          const smallRaise = currentBotBid.amount + bidStep;
-          if (maxHumanBid === 0 || smallRaise < maxHumanBid) {
-            await BidService.placeBid(selectedBotId, auctionId, roundId, smallRaise);
+        
+        if (safeBid >= minBidAmount) {
+          await BidService.placeBid(selectedBotId, auctionId, roundId, safeBid);
+        }
+      } else {
+        const botRankEntry = ranking.find(r => r.bid.userId === selectedBotId);
+        
+        if (botRankEntry && !botRankEntry.isWinning) {
+          const winningBids = ranking.filter(r => r.isWinning);
+          const lowestWinningBid = winningBids.length > 0 
+            ? winningBids[winningBids.length - 1].bid.amount 
+            : minBidAmount;
+
+          const randomSteps = Math.floor(Math.random() * 4) + 1;
+          const newBotBid = this.roundToStep(lowestWinningBid, minBidAmount, bidStep) + randomSteps * bidStep;
+
+          if (maxHumanBid > 0 && newBotBid >= maxHumanBid) {
+            const safeRaise = this.roundToStep(maxHumanBid - 1, minBidAmount, bidStep);
+            if (safeRaise > currentBotBid.amount && safeRaise >= minBidAmount) {
+              await BidService.placeBid(selectedBotId, auctionId, roundId, safeRaise);
+            }
+          } else {
+            if (newBotBid > currentBotBid.amount) {
+              await BidService.placeBid(selectedBotId, auctionId, roundId, newBotBid);
+            }
+          }
+        } else if (botRankEntry && botRankEntry.isWinning) {
+          // Иногда выигрывающий бот может немного поднять ставку
+          if (Math.random() < 0.15 && botBids.length > 1) {
+            const smallRaise = currentBotBid.amount + bidStep;
+            if (maxHumanBid === 0 || smallRaise < maxHumanBid) {
+              await BidService.placeBid(selectedBotId, auctionId, roundId, smallRaise);
+            }
           }
         }
       }
