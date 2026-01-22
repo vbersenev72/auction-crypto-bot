@@ -1,6 +1,6 @@
 ### Демонстрация работы
 
-[Смотреть демо](https://github.com/user-attachments/assets/15ceb7a2-9e37-48ce-9bbc-5cb5d8a13d78)
+[Смотреть демо](https://github.com/user-attachments/assets/4a11b6f0-69ed-4eae-8bc3-1a33e5f1e7dc)
 
 ---
 
